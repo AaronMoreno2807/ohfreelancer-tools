@@ -1,5 +1,5 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, createElement, ReactElement } from 'react';
 
 interface AnimatedTextProps {
   text: string;
@@ -9,8 +9,7 @@ interface AnimatedTextProps {
 }
 
 const AnimatedText = ({ text, className = '', element = 'h1', delay = 0 }: AnimatedTextProps) => {
-  // We need a more specific approach for the ref
-  const textRef = useRef<HTMLElement>(null);
+  const textRef = useRef<HTMLElement | null>(null);
   
   useEffect(() => {
     if (!textRef.current) return;
@@ -38,17 +37,14 @@ const AnimatedText = ({ text, className = '', element = 'h1', delay = 0 }: Anima
     };
   }, [delay]);
   
-  // Use a type assertion for the element
-  const Component = element as keyof JSX.IntrinsicElements;
-  
-  // Render the component with the correct ref handling
-  return (
-    <Component 
-      ref={textRef} 
-      className={`opacity-0 ${className}`}
-    >
-      {text}
-    </Component>
+  // Use createElement instead of JSX to avoid complex type issues
+  return createElement(
+    element,
+    {
+      ref: textRef,
+      className: `opacity-0 ${className}`
+    },
+    text
   );
 };
 
