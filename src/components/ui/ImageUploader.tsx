@@ -1,11 +1,12 @@
 
 import { useState, useRef, useEffect } from 'react';
-import { Upload, X, Camera, Image as ImageIcon, RotateCw, Check, RefreshCw } from 'lucide-react';
+import { Upload, X, Camera, Image as ImageIcon, RotateCw, Check, RefreshCw, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
 import { Label } from './label';
 import { Input } from './input';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription } from './alert';
 
 interface ImageUploaderProps {
   label: string;
@@ -66,16 +67,24 @@ const ImageUploader = ({
     setIsLoading(true);
     setError(null);
     
-    // Validate file type
-    if (!file.type.match(acceptedFileTypes.replace(/\s/g, ''))) {
-      setError(`Invalid file type. Please upload ${acceptedFileTypes}.`);
+    // Check if file exists
+    if (!file) {
+      setError("No file selected. Please select an image file.");
+      setIsLoading(false);
+      return false;
+    }
+    
+    // Validate file type more strictly
+    const acceptedTypes = acceptedFileTypes.split(',').map(type => type.trim());
+    if (!acceptedTypes.includes(file.type)) {
+      setError(`Invalid file type: ${file.type}. Please upload ${acceptedFileTypes} only.`);
       setIsLoading(false);
       return false;
     }
     
     // Validate file size
     if (file.size > maxFileSize) {
-      setError(`File is too large. Maximum size is ${maxFileSizeMB}MB.`);
+      setError(`File is too large (${(file.size / (1024 * 1024)).toFixed(2)}MB). Maximum size is ${maxFileSizeMB}MB.`);
       setIsLoading(false);
       return false;
     }
@@ -88,8 +97,9 @@ const ImageUploader = ({
       const imageLoadPromise = new Promise<boolean>((resolve) => {
         image.onload = () => {
           URL.revokeObjectURL(imageUrl);
+          console.log(`Image dimensions: ${image.width}x${image.height}`);
           if (image.width < minResolution.width || image.height < minResolution.height) {
-            setError(`Image resolution is too low. Minimum required is ${minResolution.width}x${minResolution.height}px.`);
+            setError(`Image resolution is too low (${image.width}x${image.height}). Minimum required is ${minResolution.width}x${minResolution.height}px.`);
             resolve(false);
           } else {
             resolve(true);
@@ -98,7 +108,7 @@ const ImageUploader = ({
         
         image.onerror = () => {
           URL.revokeObjectURL(imageUrl);
-          setError('Failed to load image. Please try another file.');
+          setError('Failed to load image. The file may be corrupted or not a valid image.');
           resolve(false);
         };
       });
@@ -108,7 +118,8 @@ const ImageUploader = ({
       setIsLoading(false);
       return result;
     } catch (err) {
-      setError('Failed to validate image. Please try again.');
+      console.error('Image validation error:', err);
+      setError('Failed to validate image. Please try again with a different file.');
       setIsLoading(false);
       return false;
     }
@@ -122,26 +133,50 @@ const ImageUploader = ({
       return;
     }
     
+    // Show loading state
+    setIsLoading(true);
+    
+    // Clear previous errors
+    setError(null);
+    
+    // Validate the file
     const isValid = await validateImage(file);
-    if (!isValid) return;
+    
+    if (!isValid) {
+      // If validation failed, the error will be set by validateImage
+      return;
+    }
 
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPreviewUrl(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-    
-    // Pass file to parent component
-    onChange(file);
-    
-    // Reset rotation
-    setRotation(0);
-    
-    toast({
-      title: "Image uploaded successfully",
-      description: "Your document image has been validated and is ready for submission."
-    });
+    try {
+      // Create preview
+      const reader = new FileReader();
+      
+      reader.onload = () => {
+        setPreviewUrl(reader.result as string);
+        // Pass file to parent component
+        onChange(file);
+        // Reset rotation
+        setRotation(0);
+        
+        toast({
+          title: "Image uploaded successfully",
+          description: "Your document image has been validated and is ready for submission."
+        });
+      };
+      
+      reader.onerror = () => {
+        setError("Failed to read the file. Please try another file.");
+        onChange(null);
+      };
+      
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('File reading error:', err);
+      setError('An error occurred while processing the file.');
+      onChange(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -180,6 +215,7 @@ const ImageUploader = ({
     }
     onChange(null);
     setRotation(0);
+    setError(null);
   };
   
   const startCamera = async () => {
@@ -205,7 +241,11 @@ const ImageUploader = ({
       }
     } catch (err) {
       console.error('Error accessing camera:', err);
-      setError('Failed to access camera. Please ensure you have granted camera permissions.');
+      const errorMessage = err instanceof Error 
+        ? `Failed to access camera: ${err.message}`
+        : 'Failed to access camera. Please ensure you have granted camera permissions.';
+      
+      setError(errorMessage);
       setIsUsingCamera(false);
     }
   };
@@ -222,7 +262,10 @@ const ImageUploader = ({
     
     // Draw the video frame to the canvas
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      setError('Failed to capture image. Canvas context not available.');
+      return;
+    }
     
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
@@ -233,7 +276,7 @@ const ImageUploader = ({
         return;
       }
       
-      // Create a File from the Blob
+      // Create a File from the Blob with proper mime type
       const capturedFile = new File([blob], 'captured-id.jpg', { type: 'image/jpeg' });
       
       // Close camera
@@ -321,7 +364,7 @@ const ImageUploader = ({
             ${isDragging ? 'border-oh-accent bg-oh-accent/5' : 'border-oh-border'}
             ${error ? 'border-red-300 bg-red-50' : ''}
             ${previewUrl ? 'bg-oh-border/10' : 'bg-oh-border/5 hover:bg-oh-border/10'}
-            ${isLoading ? 'cursor-wait' : 'cursor-pointer'}
+            ${isLoading ? 'cursor-wait' : previewUrl ? 'cursor-default' : 'cursor-pointer'}
           `}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
@@ -422,9 +465,10 @@ const ImageUploader = ({
               className="hidden"
               accept={acceptedFileTypes}
               onChange={(e) => {
-                if (e.target.files && e.target.files.length > 0) {
-                  handleFileChange(e.target.files[0]);
-                }
+                const file = e.target.files && e.target.files.length > 0 ? e.target.files[0] : null;
+                handleFileChange(file);
+                // Reset input value to allow selecting the same file again
+                e.target.value = '';
               }}
               ref={fileInputRef}
             />
@@ -433,11 +477,14 @@ const ImageUploader = ({
       )}
       
       {error && (
-        <p className="mt-1 text-sm text-red-600 animate-fade-in">{error}</p>
+        <Alert variant="destructive" className="mt-2 animate-fade-in">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="ml-2">{error}</AlertDescription>
+        </Alert>
       )}
       
       <p className="mt-1 text-xs text-oh-muted-text">
-        Accepted formats: {acceptedFileTypes} (Max: {maxFileSizeMB}MB)
+        Accepted formats: {acceptedFileTypes.replace('image/', '').replace('image/', '')} (Max: {maxFileSizeMB}MB)
       </p>
     </div>
   );

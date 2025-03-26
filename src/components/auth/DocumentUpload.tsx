@@ -1,26 +1,32 @@
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Shield, Info, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Shield, Info, Check, AlertTriangle } from 'lucide-react';
 import ImageUploader from '../ui/ImageUploader';
 import AnimatedText from '../ui/AnimatedText';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription } from '../ui/alert';
 
 const DocumentUpload = () => {
   const [frontIdFile, setFrontIdFile] = useState<File | null>(null);
   const [backIdFile, setBackIdFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
+  const [error, setError] = useState<string | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
   
   const handleFrontIdChange = (file: File | null) => {
     setFrontIdFile(file);
+    // Clear any previous error when a new file is selected
+    setError(null);
   };
   
   const handleBackIdChange = (file: File | null) => {
     setBackIdFile(file);
+    // Clear any previous error when a new file is selected
+    setError(null);
   };
   
   const isNextEnabled = frontIdFile !== null;
@@ -35,8 +41,10 @@ const DocumentUpload = () => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     if (!frontIdFile) {
+      setError("Front ID document is required to complete verification.");
       toast({
         title: "Front ID required",
         description: "Please upload the front of your ID document.",
@@ -49,7 +57,14 @@ const DocumentUpload = () => {
     
     try {
       // In a real implementation, you would upload the files to a server
-      console.log('Submitting files:', { frontIdFile, backIdFile });
+      console.log('Submitting files:', { 
+        frontId: frontIdFile ? frontIdFile.name : 'none',
+        backId: backIdFile ? backIdFile.name : 'none',
+        frontSize: frontIdFile ? `${(frontIdFile.size / 1024).toFixed(2)}KB` : '0KB',
+        backSize: backIdFile ? `${(backIdFile.size / 1024).toFixed(2)}KB` : '0KB',
+        frontType: frontIdFile ? frontIdFile.type : 'none',
+        backType: backIdFile ? backIdFile.type : 'none'
+      });
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -63,6 +78,7 @@ const DocumentUpload = () => {
       navigate('/');
     } catch (error) {
       console.error('Error submitting documents:', error);
+      setError("There was a problem uploading your documents. Please try again.");
       toast({
         title: "Upload failed",
         description: "There was a problem uploading your documents. Please try again.",
@@ -96,6 +112,13 @@ const DocumentUpload = () => {
           </p>
         </div>
       </div>
+      
+      {error && (
+        <Alert variant="destructive" className="mb-6 animate-fade-in">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="ml-2">{error}</AlertDescription>
+        </Alert>
+      )}
       
       <form onSubmit={handleSubmit} className="space-y-8">
         {step === 1 ? (

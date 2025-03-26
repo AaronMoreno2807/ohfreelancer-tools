@@ -15,7 +15,7 @@ const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: 'Hello! Welcome to OhFreelancers. How can I assist you today?',
+      content: 'Hello! I\'m here to help with your ID document verification. How can I assist you today?',
       isUser: false,
       timestamp: new Date()
     }
@@ -59,21 +59,33 @@ const ChatInterface = () => {
     setMessages([...messages, userMessage]);
     setInputValue('');
     
-    // Simulate bot response
+    // Generate contextual response based on user input
     setTimeout(() => {
-      const botResponses = [
-        "I'd be happy to help with your freelance billing needs!",
-        "You can generate invoices for multiple countries through our platform.",
-        "Our fee is just 10% after your project is paid.",
-        "Need any specific information about our services?",
-        "I can help with registration questions too."
-      ];
+      let botResponse = "";
+      const userQuery = userMessage.content.toLowerCase();
       
-      const randomResponse = botResponses[Math.floor(Math.random() * botResponses.length)];
+      if (userQuery.includes("file type") || userQuery.includes("format") || userQuery.includes("jpg") || userQuery.includes("png")) {
+        botResponse = "We accept JPEG and PNG image formats for ID document uploads. Make sure your file is less than 5MB in size for optimal processing.";
+      } 
+      else if (userQuery.includes("camera") || userQuery.includes("photo") || userQuery.includes("take picture")) {
+        botResponse = "You can use your device's camera to capture your ID directly. Just click the 'Camera' button in the uploader and make sure your ID is well-lit and completely visible in the frame.";
+      }
+      else if (userQuery.includes("error") || userQuery.includes("problem") || userQuery.includes("not working")) {
+        botResponse = "If you're experiencing upload issues, please make sure your image is in JPG or PNG format, under 5MB, and has sufficient resolution. For camera capture problems, ensure you've granted camera permissions.";
+      }
+      else if (userQuery.includes("privacy") || userQuery.includes("secure") || userQuery.includes("data")) {
+        botResponse = "Your security is our priority. All document images are encrypted during transit and storage. We only use them for verification purposes and comply with data protection regulations.";
+      }
+      else if (userQuery.includes("how long") || userQuery.includes("verification time") || userQuery.includes("wait")) {
+        botResponse = "Document verification typically takes just a few minutes. If you experience any delays longer than 5 minutes, please try submitting again or contact our support team.";
+      }
+      else {
+        botResponse = "I'm here to help with your ID document verification. You can ask about accepted file types, how to take a good photo, privacy concerns, or any issues you're experiencing with the upload process.";
+      }
       
       const botMessage: Message = {
         id: Date.now().toString(),
-        content: randomResponse,
+        content: botResponse,
         isUser: false,
         timestamp: new Date()
       };
@@ -128,14 +140,14 @@ const ChatInterface = () => {
               <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
                 <img 
                   src="/lovable-uploads/5aa96ccb-a325-426d-8ba4-dac5f7e0c0ef.png" 
-                  alt="OhFreelancers Logo" 
+                  alt="ID Verification Support" 
                   className="w-6 h-6 object-contain"
                 />
               </div>
               <div>
-                <h3 className="font-medium text-sm">OhFreelancers Support</h3>
+                <h3 className="font-medium text-sm">ID Verification Support</h3>
                 {!isMinimized && (
-                  <p className="text-xs text-white/70">We typically respond in minutes</p>
+                  <p className="text-xs text-white/70">We typically respond in seconds</p>
                 )}
               </div>
             </div>
@@ -196,7 +208,7 @@ const ChatInterface = () => {
                   </button>
                   <input
                     type="text"
-                    placeholder="Type your message..."
+                    placeholder="Ask about ID verification..."
                     className="flex-1 text-sm border-none bg-oh-border/20 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-oh-accent"
                     value={inputValue}
                     onChange={handleInputChange}
