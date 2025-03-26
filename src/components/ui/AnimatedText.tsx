@@ -9,7 +9,8 @@ interface AnimatedTextProps {
 }
 
 const AnimatedText = ({ text, className = '', element = 'h1', delay = 0 }: AnimatedTextProps) => {
-  const textRef = useRef<HTMLElement | null>(null);
+  // Create a more specific ref type based on the element type
+  const textRef = useRef<HTMLElement>(null);
   
   useEffect(() => {
     if (!textRef.current) return;
@@ -37,10 +38,10 @@ const AnimatedText = ({ text, className = '', element = 'h1', delay = 0 }: Anima
     };
   }, [delay]);
   
-  const Element = element;
+  const Element = element as keyof JSX.IntrinsicElements;
   
   return (
-    <Element ref={textRef} className={`opacity-0 ${className}`}>
+    <Element ref={textRef as any} className={`opacity-0 ${className}`}>
       {text}
     </Element>
   );

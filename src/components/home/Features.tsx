@@ -9,7 +9,7 @@ const Features = () => {
   };
   
   useEffect(() => {
-    const observers = Object.values(featureRefs).map(ref => {
+    const observers = Object.entries(featureRefs).map(([key, ref]) => {
       if (!ref.current) return null;
       
       const observer = new IntersectionObserver(
@@ -29,9 +29,13 @@ const Features = () => {
     });
     
     return () => {
-      observers.forEach((observer, i) => {
-        if (observer && featureRefs[i as keyof typeof featureRefs].current) {
-          observer.unobserve(featureRefs[i as keyof typeof featureRefs].current!);
+      observers.forEach((observer) => {
+        if (observer) {
+          Object.values(featureRefs).forEach(ref => {
+            if (ref.current) {
+              observer.unobserve(ref.current);
+            }
+          });
         }
       });
     };
